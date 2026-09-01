@@ -1,12 +1,11 @@
 import socketio
-import redis
 import json
 from typing import Dict
 
 from app.core.config import settings
+from app.core.redis_client import redis_client
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
-redis_client = redis.from_url(settings.REDIS_URL)
 
 active_connections: Dict[str, str] = {}
 

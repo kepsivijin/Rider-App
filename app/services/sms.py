@@ -1,10 +1,9 @@
 import random
-import redis
 from typing import Optional
-from app.core.config import settings
-from app.utils.phone import normalize_phone
 
-redis_client = redis.from_url(settings.REDIS_URL)
+from app.core.config import settings
+from app.core.redis_client import redis_client
+from app.utils.phone import normalize_phone
 
 OTP_EXPIRY_SECONDS = 900  # 15 minutes
 DEV_OTP = "123456"
@@ -18,10 +17,16 @@ def generate_otp() -> str:
 
 
 def store_otp(phone_number: str, otp: str) -> None:
-    """Store OTP in Redis with expiry"""
+    """Store OTP in Redis with expiry. In DEBUG mode, skip Redis (demo OTP on screen)."""
+    if settings.DEBUG:
+        return
+
     phone = normalize_phone(phone_number)
     key = f"otp:{phone}"
-    redis_client.setex(key, OTP_EXPIRY_SECONDS, otp)
+    try:
+        redis_client.setex(key, OTP_EXPIRY_SECONDS, otp)
+    except Exception as exc:
+        print(f"Redis store_otp failed: {exc}")
 
 
 def verify_otp(phone_number: str, otp: str) -> bool:
@@ -33,13 +38,20 @@ def verify_otp(phone_number: str, otp: str) -> bool:
         return True
 
     key = f"otp:{phone}"
-    stored_otp = redis_client.get(key)
+    try:
+        stored_otp = redis_client.get(key)
+    except Exception as exc:
+        print(f"Redis verify_otp failed: {exc}")
+        return False
 
     if stored_otp is None:
         return False
 
     if stored_otp.decode() == otp_clean:
-        redis_client.delete(key)
+        try:
+            redis_client.delete(key)
+        except Exception:
+            pass
         return True
 
     return False
