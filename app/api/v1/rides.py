@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -78,6 +79,7 @@ async def request_ride(
         payment_method=ride_data.payment_method,
         vehicle_type=ride_data.vehicle_type.value,
         passenger_count=ride_data.passenger_count,
+        scheduled_at=ride_data.scheduled_at,
         status=RideStatus.REQUESTED
     )
     
@@ -85,21 +87,24 @@ async def request_ride(
     db.commit()
     db.refresh(ride)
     
-    nearby_drivers = find_nearby_drivers(
-        db,
-        ride_data.pickup_latitude,
-        ride_data.pickup_longitude,
-        radius_km=5.0
-    )
+    is_scheduled_later = ride_data.scheduled_at and ride_data.scheduled_at > datetime.utcnow()
     
-    for driver, user, distance in nearby_drivers:
-        if user.fcm_token:
-            await notify_driver_ride_request(
-                user.fcm_token,
-                str(ride.id),
-                pickup_address,
-                estimated_fare
-            )
+    if not is_scheduled_later:
+        nearby_drivers = find_nearby_drivers(
+            db,
+            ride_data.pickup_latitude,
+            ride_data.pickup_longitude,
+            radius_km=5.0
+        )
+        
+        for driver, user, distance in nearby_drivers:
+            if user.fcm_token:
+                await notify_driver_ride_request(
+                    user.fcm_token,
+                    str(ride.id),
+                    pickup_address,
+                    estimated_fare
+                )
     
     return _serialize(ride, db, current_user)
 
@@ -109,10 +114,14 @@ async def get_pending_rides(
     current_user: User = Depends(get_current_driver),
     db: Session = Depends(get_db)
 ):
-    """Get all requested rides waiting for a driver"""
+    """Get all requested rides waiting for a driver (immediate + due scheduled)"""
+    now = datetime.utcnow()
     rides = (
         db.query(Ride)
-        .filter(Ride.status == RideStatus.REQUESTED)
+        .filter(
+            Ride.status == RideStatus.REQUESTED,
+            or_(Ride.scheduled_at.is_(None), Ride.scheduled_at <= now),
+        )
         .order_by(Ride.requested_at.desc())
         .limit(20)
         .all()

@@ -17,6 +17,7 @@ class RideCreate(BaseModel):
     payment_method: PaymentMethod = PaymentMethod.CASH
     vehicle_type: VehicleType = VehicleType.BIKE
     passenger_count: int = Field(1, ge=1, le=8)
+    scheduled_at: Optional[datetime] = None
 
 
 class RideUpdate(BaseModel):
@@ -51,6 +52,7 @@ class RideResponse(BaseModel):
     accepted_at: Optional[datetime]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
+    scheduled_at: Optional[datetime] = None
     created_at: datetime
     driver_name: Optional[str] = None
     driver_vehicle: Optional[str] = None

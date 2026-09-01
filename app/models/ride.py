@@ -61,6 +61,7 @@ class Ride(Base):
     
     pickup_otp = Column(String(6), nullable=True)
     pickup_verified = Column(Boolean, default=False, nullable=False)
+    scheduled_at = Column(DateTime, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
