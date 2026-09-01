@@ -3,7 +3,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _to_naive_utc(value: datetime) -> datetime:
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
 
 from app.core.database import get_db
 from app.api.dependencies import get_current_user, get_current_driver
@@ -79,7 +89,7 @@ async def request_ride(
         payment_method=ride_data.payment_method,
         vehicle_type=ride_data.vehicle_type.value,
         passenger_count=ride_data.passenger_count,
-        scheduled_at=ride_data.scheduled_at,
+        scheduled_at=_to_naive_utc(ride_data.scheduled_at) if ride_data.scheduled_at else None,
         status=RideStatus.REQUESTED
     )
     
@@ -87,7 +97,7 @@ async def request_ride(
     db.commit()
     db.refresh(ride)
     
-    is_scheduled_later = ride_data.scheduled_at and ride_data.scheduled_at > datetime.utcnow()
+    is_scheduled_later = ride_data.scheduled_at and _to_naive_utc(ride_data.scheduled_at) > _utc_now()
     
     if not is_scheduled_later:
         nearby_drivers = find_nearby_drivers(
@@ -115,7 +125,7 @@ async def get_pending_rides(
     db: Session = Depends(get_db)
 ):
     """Get all requested rides waiting for a driver (immediate + due scheduled)"""
-    now = datetime.utcnow()
+    now = _utc_now()
     rides = (
         db.query(Ride)
         .filter(

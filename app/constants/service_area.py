@@ -6,14 +6,14 @@ SERVICE_AREA_NAME = "Marthandam Region"
 
 # Polygon as [longitude, latitude] pairs (closed ring)
 DEFAULT_SERVICE_BOUNDARY = [
-    [77.085, 8.255],
-    [77.245, 8.255],
-    [77.245, 8.325],
-    [77.085, 8.325],
-    [77.085, 8.255],
+    [77.1, 8.24],
+    [77.24, 8.24],
+    [77.24, 8.33],
+    [77.1, 8.33],
+    [77.1, 8.24],
 ]
 
-MIN_LATITUDE = 8.255
-MAX_LATITUDE = 8.325
-MIN_LONGITUDE = 77.085
-MAX_LONGITUDE = 77.245
+MIN_LATITUDE = 8.24
+MAX_LATITUDE = 8.33
+MIN_LONGITUDE = 77.1
+MAX_LONGITUDE = 77.24
