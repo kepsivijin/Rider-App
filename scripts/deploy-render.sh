@@ -25,7 +25,7 @@ render services create \
   --runtime python \
   --plan free \
   --region singapore \
-  --build-command "pip install -r requirements.txt && alembic upgrade head" \
+  --build-command "pip install -r requirements.txt && alembic upgrade head && python scripts/seed_test_users.py" \
   --start-command "uvicorn app.main:app --host 0.0.0.0 --port \$PORT" \
   --health-check-path /health \
   --env-var "DATABASE_URL=${DATABASE_URL}" \

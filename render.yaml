@@ -3,7 +3,10 @@ services:
     name: rider-app-api
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    region: singapore
+    repo: https://github.com/kepsivijin/Rider-App
+    branch: main
+    buildCommand: pip install -r requirements.txt && alembic upgrade head && python scripts/seed_test_users.py
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
