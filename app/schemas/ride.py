@@ -26,6 +26,10 @@ class RideUpdate(BaseModel):
     payment_transaction_id: Optional[str] = None
 
 
+class PickupOtpVerify(BaseModel):
+    pickup_otp: str = Field(..., min_length=4, max_length=6)
+
+
 class RideResponse(BaseModel):
     id: UUID
     customer_id: UUID
@@ -57,6 +61,9 @@ class RideResponse(BaseModel):
     passenger_count: int = 1
     driver_vehicle_type: Optional[str] = None
     driver_passenger_capacity: Optional[int] = None
+    pickup_otp: Optional[str] = None
+    pickup_verified: bool = False
+    notification_message: Optional[str] = None
     
     class Config:
         from_attributes = True

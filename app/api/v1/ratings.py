@@ -7,25 +7,32 @@ from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models.user import User
 from app.models.rating import Rating
-from app.models.ride import Ride
+from app.models.ride import Ride, RideStatus
 from app.models.driver import Driver
 from app.schemas.rating import RatingCreate, RatingResponse
 
 router = APIRouter()
 
 
+@router.post("", response_model=RatingResponse)
 @router.post("/", response_model=RatingResponse)
 async def create_rating(
     rating_data: RatingCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a rating for a ride"""
+    """Create a rating for a completed ride"""
     ride = db.query(Ride).filter(Ride.id == rating_data.ride_id).first()
     if not ride:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ride not found"
+        )
+
+    if ride.status != RideStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can only rate completed rides"
         )
     
     if ride.customer_id != current_user.id:
@@ -35,6 +42,23 @@ async def create_rating(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to rate this ride"
             )
+
+    if not ride.driver_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No driver assigned to this ride"
+        )
+
+    driver = db.query(Driver).filter(Driver.id == ride.driver_id).first()
+    if not driver:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Driver not found")
+
+    expected_driver_user_id = driver.user_id
+    if rating_data.to_user_id != expected_driver_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid driver to rate for this ride"
+        )
     
     existing_rating = db.query(Rating).filter(
         Rating.ride_id == rating_data.ride_id,
@@ -56,14 +80,14 @@ async def create_rating(
     )
     
     db.add(rating)
+    db.flush()
     
     to_user_ratings = db.query(Rating).filter(Rating.to_user_id == rating_data.to_user_id).all()
-    if to_user_ratings:
-        avg_rating = sum(r.rating for r in to_user_ratings) / len(to_user_ratings)
-        
-        driver = db.query(Driver).filter(Driver.user_id == rating_data.to_user_id).first()
-        if driver:
-            driver.rating = round(avg_rating, 2)
+    avg_rating = sum(r.rating for r in to_user_ratings) / len(to_user_ratings)
+    
+    driver_profile = db.query(Driver).filter(Driver.user_id == rating_data.to_user_id).first()
+    if driver_profile:
+        driver_profile.rating = round(avg_rating, 2)
     
     db.commit()
     db.refresh(rating)

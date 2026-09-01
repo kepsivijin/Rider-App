@@ -9,15 +9,20 @@ from app.api.dependencies import get_current_user, get_current_driver
 from app.models.user import User
 from app.models.ride import Ride, RideStatus, PaymentStatus
 from app.models.driver import Driver, VehicleType
-from app.schemas.ride import RideCreate, RideResponse, RideUpdate, NearbyDriverResponse
+from app.schemas.ride import RideCreate, RideResponse, RideUpdate, NearbyDriverResponse, PickupOtpVerify
 from app.services.fare_calculator import estimate_fare
 from app.services.ride_matching import find_nearby_drivers, haversine_distance
 from app.services.geofence import validate_ride_locations
 from app.services.notification import notify_driver_ride_request, notify_customer_ride_accepted
 from app.services.geocoding import resolve_address
 from app.services.ride_serializer import serialize_ride
+from app.services.pickup_otp import generate_pickup_otp
 
 router = APIRouter()
+
+
+def _serialize(ride: Ride, db: Session, viewer: Optional[User] = None) -> RideResponse:
+    return serialize_ride(ride, db, viewer)
 
 
 @router.post("/request", response_model=RideResponse)
@@ -96,7 +101,7 @@ async def request_ride(
                 estimated_fare
             )
     
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
 
 
 @router.get("/pending", response_model=List[RideResponse])
@@ -112,7 +117,7 @@ async def get_pending_rides(
         .limit(20)
         .all()
     )
-    return [serialize_ride(ride, db) for ride in rides]
+    return [_serialize(ride, db, current_user) for ride in rides]
 
 
 @router.get("/driver/active", response_model=Optional[RideResponse])
@@ -136,7 +141,7 @@ async def get_driver_active_ride(
     )
     if not ride:
         return None
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
 
 
 @router.get("/nearby-drivers", response_model=List[NearbyDriverResponse])
@@ -193,23 +198,54 @@ async def accept_ride(
             detail="Driver not eligible to accept rides"
         )
     
+    pickup_otp = generate_pickup_otp()
     ride.driver_id = driver.id
     ride.status = RideStatus.ACCEPTED
     ride.accepted_at = datetime.utcnow()
+    ride.pickup_otp = pickup_otp
+    ride.pickup_verified = False
     
     db.commit()
     db.refresh(ride)
     
     customer = db.query(User).filter(User.id == ride.customer_id).first()
-    if customer and customer.fcm_token:
-        await notify_customer_ride_accepted(
-            customer.fcm_token,
-            str(ride.id),
-            current_user.full_name,
-            driver.vehicle_number
-        )
+    await notify_customer_ride_accepted(
+        customer.fcm_token if customer else None,
+        str(ride.id),
+        current_user.full_name,
+        driver.vehicle_number,
+        pickup_otp,
+    )
     
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
+
+
+@router.post("/{ride_id}/verify-pickup", response_model=RideResponse)
+async def verify_pickup_otp(
+    ride_id: UUID,
+    body: PickupOtpVerify,
+    current_user: User = Depends(get_current_driver),
+    db: Session = Depends(get_db)
+):
+    """Driver verifies customer pickup OTP before starting the ride"""
+    ride = db.query(Ride).filter(Ride.id == ride_id).first()
+    if not ride:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ride not found")
+
+    driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+    if not driver or ride.driver_id != driver.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    if ride.status != RideStatus.ACCEPTED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ride is not awaiting pickup verification")
+
+    if not ride.pickup_otp or body.pickup_otp.strip() != ride.pickup_otp:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid pickup OTP. Ask customer for the code shown in their app.")
+
+    ride.pickup_verified = True
+    db.commit()
+    db.refresh(ride)
+    return _serialize(ride, db, current_user)
 
 
 @router.post("/{ride_id}/start", response_model=RideResponse)
@@ -238,6 +274,12 @@ async def start_ride(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ride cannot be started"
         )
+
+    if not ride.pickup_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verify customer pickup OTP before starting the ride"
+        )
     
     ride.status = RideStatus.STARTED
     ride.started_at = datetime.utcnow()
@@ -245,7 +287,7 @@ async def start_ride(
     db.commit()
     db.refresh(ride)
     
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
 
 
 @router.post("/{ride_id}/complete", response_model=RideResponse)
@@ -287,7 +329,7 @@ async def complete_ride(
     db.commit()
     db.refresh(ride)
     
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
 
 
 @router.get("/my-rides", response_model=List[RideResponse])
@@ -297,7 +339,7 @@ async def get_my_rides(
 ):
     """Get rides for current user"""
     rides = db.query(Ride).filter(Ride.customer_id == current_user.id).order_by(Ride.created_at.desc()).all()
-    return [serialize_ride(ride, db) for ride in rides]
+    return [_serialize(ride, db, current_user) for ride in rides]
 
 
 @router.get("/driver/history", response_model=List[RideResponse])
@@ -317,7 +359,7 @@ async def get_driver_ride_history(
         .limit(50)
         .all()
     )
-    return [serialize_ride(ride, db) for ride in rides]
+    return [_serialize(ride, db, current_user) for ride in rides]
 
 
 @router.get("/{ride_id}", response_model=RideResponse)
@@ -334,4 +376,4 @@ async def get_ride(
             detail="Ride not found"
         )
     
-    return serialize_ride(ride, db)
+    return _serialize(ride, db, current_user)
