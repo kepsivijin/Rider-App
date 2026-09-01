@@ -63,7 +63,7 @@ async def request_ride(
         ride_data.dropoff_longitude
     )
     
-    estimated_fare = estimate_fare(distance_km, ride_data.vehicle_type)
+    estimated_fare = estimate_fare(distance_km, ride_data.vehicle_type, ride_data.passenger_count)
 
     pickup_address = resolve_address(
         ride_data.pickup_address,

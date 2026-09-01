@@ -4,19 +4,9 @@ from app.models.driver import VehicleType
 
 MIN_BOOK_FARE = 5.0
 
-VEHICLE_BASE_FARE = {
-    VehicleType.BIKE: 30.0,
-    VehicleType.AUTO: 29.0,
-    VehicleType.CAR: 40.0,
-}
-
-VEHICLE_PER_KM = {
-    VehicleType.BIKE: 9.0,
-    VehicleType.AUTO: 12.0,
-    VehicleType.CAR: 18.0,
-}
-
-AUTO_INCLUDED_KM = 4.0
+BIKE_PER_KM = 10.0
+AUTO_PER_PERSON_KM = 8.0
+CAR_PER_PERSON_KM = 10.0
 
 WAITING_CHARGE_PER_MINUTE = 2.0
 FREE_WAITING_MINUTES = 3
@@ -25,38 +15,32 @@ NIGHT_START_HOUR = 22
 NIGHT_END_HOUR = 6
 
 
-def _distance_fare(distance_km: float, vehicle_type: VehicleType) -> Tuple[float, float]:
-    """Return (base_fare, distance_component)."""
-    base = VEHICLE_BASE_FARE[vehicle_type]
-    per_km = VEHICLE_PER_KM[vehicle_type]
-
+def _trip_fare(distance_km: float, vehicle_type: VehicleType, passenger_count: int = 1) -> float:
+    """Rural pricing: bike ₹10/km; auto & car per person per km."""
+    if vehicle_type == VehicleType.BIKE:
+        return distance_km * BIKE_PER_KM
     if vehicle_type == VehicleType.AUTO:
-        if distance_km <= AUTO_INCLUDED_KM:
-            return base, 0.0
-        extra = distance_km - AUTO_INCLUDED_KM
-        return base, extra * per_km
-
-    return base, distance_km * per_km
+        return distance_km * AUTO_PER_PERSON_KM * max(1, passenger_count)
+    return distance_km * CAR_PER_PERSON_KM * max(1, passenger_count)
 
 
 def calculate_fare(
     distance_km: float,
     vehicle_type: VehicleType,
     waiting_minutes: int = 0,
-    ride_time: datetime = None
+    ride_time: datetime = None,
+    passenger_count: int = 1,
 ) -> Tuple[float, dict]:
-    """Vehicle-specific fare (Uber-style) + optional waiting / night charges."""
     if ride_time is None:
         ride_time = datetime.now()
 
-    base_fare, distance_fare = _distance_fare(distance_km, vehicle_type)
-    per_km = VEHICLE_PER_KM[vehicle_type]
+    distance_fare = _trip_fare(distance_km, vehicle_type, passenger_count)
 
     waiting_fare = 0.0
     if waiting_minutes > FREE_WAITING_MINUTES:
         waiting_fare = (waiting_minutes - FREE_WAITING_MINUTES) * WAITING_CHARGE_PER_MINUTE
 
-    subtotal = base_fare + distance_fare + waiting_fare
+    subtotal = distance_fare + waiting_fare
 
     is_night = ride_time.hour >= NIGHT_START_HOUR or ride_time.hour < NIGHT_END_HOUR
     night_charge = 0.0
@@ -66,10 +50,10 @@ def calculate_fare(
     total_fare = subtotal + night_charge
 
     breakdown = {
-        "base_fare": round(base_fare, 2),
+        "base_fare": 0.0,
         "distance_km": round(distance_km, 2),
         "distance_fare": round(distance_fare, 2),
-        "fare_per_km": per_km,
+        "passenger_count": max(1, passenger_count),
         "waiting_minutes": waiting_minutes,
         "waiting_fare": round(waiting_fare, 2),
         "subtotal": round(subtotal, 2),
@@ -81,7 +65,9 @@ def calculate_fare(
     return round(total_fare, 2), breakdown
 
 
-def estimate_fare(distance_km: float, vehicle_type: VehicleType) -> float:
-    """Quick fare estimate for booking (no waiting / night extras)."""
-    base_fare, distance_fare = _distance_fare(distance_km, vehicle_type)
-    return round(base_fare + distance_fare, 2)
+def estimate_fare(
+    distance_km: float,
+    vehicle_type: VehicleType,
+    passenger_count: int = 1,
+) -> float:
+    return round(_trip_fare(distance_km, vehicle_type, passenger_count), 2)
