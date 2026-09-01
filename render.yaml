@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: rider-app-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: DEBUG
+        value: "True"
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: GOOGLE_MAPS_API_KEY
+        value: ""
+      - key: RAZORPAY_KEY_ID
+        value: dummy
+      - key: RAZORPAY_KEY_SECRET
+        value: dummy
+      - key: FCM_SERVER_KEY
+        value: dummy
+      - key: SMS_API_KEY
+        value: dummy
+      - key: SMS_SENDER_ID
+        value: RIDESH
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
