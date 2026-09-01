@@ -84,6 +84,28 @@ async def driver_location_update(sid, data):
 
 
 @sio.event
+async def customer_location_update(sid, data):
+    """Customer sends location update during ride"""
+    ride_id = data.get('ride_id')
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    if not all([ride_id, latitude, longitude]):
+        await sio.emit('error', {'message': 'Invalid location data'}, room=sid)
+        return
+
+    location_data = {
+        'ride_id': ride_id,
+        'latitude': latitude,
+        'longitude': longitude,
+        'timestamp': data.get('timestamp'),
+        'user_type': 'customer',
+    }
+
+    await sio.emit('driver_location_receive', location_data, room=ride_id, skip_sid=sid)
+
+
+@sio.event
 async def ride_status_change(sid, data):
     """Broadcast ride status change"""
     ride_id = data.get('ride_id')
