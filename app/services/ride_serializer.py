@@ -6,6 +6,8 @@ from app.models.driver import Driver
 from app.models.user import User
 from app.schemas.ride import RideResponse
 from app.services.geocoding import resolve_address
+from app.core.redis_client import redis_client
+import json
 
 
 def serialize_ride(ride: Ride, db: Session, viewer: Optional[User] = None) -> RideResponse:
@@ -68,5 +70,14 @@ def serialize_ride(ride: Ride, db: Session, viewer: Optional[User] = None) -> Ri
     data["pickup_otp"] = pickup_otp
     data["pickup_verified"] = bool(getattr(ride, "pickup_verified", False))
     data["notification_message"] = notification_message if is_customer else None
+
+    live = redis_client.get(f"ride_location:{ride.id}")
+    if live:
+        try:
+            loc = json.loads(live)
+            data["driver_latitude"] = loc.get("latitude")
+            data["driver_longitude"] = loc.get("longitude")
+        except (json.JSONDecodeError, TypeError):
+            pass
 
     return RideResponse(**data)

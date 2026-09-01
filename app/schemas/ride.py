@@ -66,7 +66,9 @@ class RideResponse(BaseModel):
     pickup_otp: Optional[str] = None
     pickup_verified: bool = False
     notification_message: Optional[str] = None
-    
+    driver_latitude: Optional[float] = None
+    driver_longitude: Optional[float] = None
+
     class Config:
         from_attributes = True
 
