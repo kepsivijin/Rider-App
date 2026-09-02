@@ -1,19 +1,18 @@
 """
-Service area: Eramanthurai, Vallavilai, Nithiravilai & Marthandam surroundings
+Service area: Ezhudesam & surroundings (Puvar, Kolachel, Vilavankodu)
 """
 
-SERVICE_AREA_NAME = "Marthandam Region"
+SERVICE_AREA_NAME = "Ezhudesam"
 
-# Polygon as [longitude, latitude] pairs (closed ring)
 DEFAULT_SERVICE_BOUNDARY = [
-    [77.1, 8.24],
-    [77.24, 8.24],
-    [77.24, 8.33],
-    [77.1, 8.33],
-    [77.1, 8.24],
+    [76.96, 8.31],
+    [77.18, 8.31],
+    [77.18, 8.42],
+    [76.96, 8.42],
+    [76.96, 8.31],
 ]
 
-MIN_LATITUDE = 8.24
-MAX_LATITUDE = 8.33
-MIN_LONGITUDE = 77.1
-MAX_LONGITUDE = 77.24
+MIN_LATITUDE = 8.31
+MAX_LATITUDE = 8.42
+MIN_LONGITUDE = 76.96
+MAX_LONGITUDE = 77.18
