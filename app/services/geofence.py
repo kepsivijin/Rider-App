@@ -37,7 +37,7 @@ def point_in_polygon(point: Tuple[float, float], polygon: List[List[float]]) -> 
 def is_within_service_area(latitude: float, longitude: float) -> bool:
     """
     Check if coordinates are within the service area
-    (Eramanthurai, Vallavilai, Nithiravilai, Marthandam surroundings)
+    (Kolachel–Poovar coast and Marthandam–Chirayankeezhu surroundings)
     """
     boundary = settings.geofence_coordinates
     lons = [p[0] for p in boundary]
@@ -55,10 +55,10 @@ def validate_ride_locations(
     Validate that both pickup and dropoff are within the service area
     """
     if not is_within_service_area(pickup_lat, pickup_lon):
-        return False, "Pickup is outside service area (Eramanthurai–Marthandam region only)"
+        return False, "Pickup is outside service area (Kolachel–Poovar & Marthandam–Chirayankeezhu only)"
     
     if not is_within_service_area(dropoff_lat, dropoff_lon):
-        return False, "Dropoff is outside service area (Eramanthurai–Marthandam region only)"
+        return False, "Dropoff is outside service area (Kolachel–Poovar & Marthandam–Chirayankeezhu only)"
     
     return True, ""
 

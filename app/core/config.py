@@ -39,9 +39,9 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:3002"
     
-    # Service area: Eramanthurai, Vallavilai, Nithiravilai, Marthandam surroundings
+    # Service area: Kolachel–Poovar coast + Marthandam–Chirayankeezhu surroundings
     SERVICE_AREA_BOUNDARY: str = (
-        '[[77.085,8.255],[77.245,8.255],[77.245,8.325],[77.085,8.325],[77.085,8.255]]'
+        '[[76.948,8.238],[77.265,8.238],[77.265,8.425],[76.948,8.425],[76.948,8.238]]'
     )
     
     class Config:

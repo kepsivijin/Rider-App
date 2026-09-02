@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import auth, rides, drivers, ratings, users, payments, admin
-from app.websocket.ride_tracking import get_socket_app
+from app.websocket.ride_tracking import sio
+import socketio
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -26,8 +27,8 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
-socket_app = get_socket_app()
-app.mount("/ws", socket_app)
+# Socket.IO wraps FastAPI — fixes WebSocket 500 errors from bad /ws mount
+asgi_app = socketio.ASGIApp(sio, other_asgi_app=app, socketio_path="socket.io")
 
 
 @app.get("/")
@@ -46,4 +47,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(asgi_app, host="0.0.0.0", port=8001)

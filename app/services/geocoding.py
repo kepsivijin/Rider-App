@@ -9,14 +9,21 @@ COORD_PATTERN = re.compile(r"^-?\d+\.\d+,\s*-?\d+\.\d+$")
 PRESET_SNAP_KM = 0.4
 
 KNOWN_LOCATIONS = {
-    "Ezhudesam": (8.385, 77.055),
-    "Puvar": (8.372, 77.098),
     "Kolachel": (8.345, 77.008),
+    "Eraviputhanthurai": (8.378, 77.032),
+    "Ezhudesam": (8.385, 77.055),
+    "Poovar": (8.381, 77.077),
+    "Puvar": (8.372, 77.098),
     "Vilavankodu": (8.358, 77.118),
     "Unnamalaikadai": (8.362, 77.148),
-    "Eraviputhanthurai": (8.378, 77.032),
+    "Chirayankeezhu": (8.248, 77.152),
     "Poothurai (Pottur)": (8.264, 77.138),
-    "St Thomas Forane Church, Thoothoor": (8.261, 77.1431),
+    "Thoothoor": (8.261, 77.1431),
+    "Nithiravilai": (8.2739, 77.1436),
+    "Vallavilai": (8.2815, 77.1143),
+    "Eramanthurai": (8.2875, 77.105),
+    "Kollancode": (8.289, 77.108),
+    "Marthandam": (8.3076, 77.2218),
 }
 
 _geocoder = Nominatim(user_agent="kanyakumari-rideshare/1.0")

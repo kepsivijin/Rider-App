@@ -28,6 +28,7 @@ from app.services.notification import notify_driver_ride_request, notify_custome
 from app.services.geocoding import resolve_address
 from app.services.ride_serializer import serialize_ride
 from app.services.pickup_otp import generate_pickup_otp
+from app.services.ride_rejections import get_rejected_ride_ids, record_driver_rejection
 
 router = APIRouter()
 
@@ -126,6 +127,10 @@ async def get_pending_rides(
 ):
     """Get all requested rides waiting for a driver (immediate + due scheduled)"""
     now = _utc_now()
+    driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+    if not driver:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Driver profile not found")
+
     rides = (
         db.query(Ride)
         .filter(
@@ -136,7 +141,8 @@ async def get_pending_rides(
         .limit(20)
         .all()
     )
-    return [_serialize(ride, db, current_user) for ride in rides]
+    visible = [ride for ride in rides if str(ride.id) not in get_rejected_ride_ids(driver.id)]
+    return [_serialize(ride, db, current_user) for ride in visible]
 
 
 @router.get("/driver/active", response_model=Optional[RideResponse])
@@ -237,6 +243,28 @@ async def accept_ride(
     )
     
     return _serialize(ride, db, current_user)
+
+
+@router.post("/{ride_id}/reject", response_model=dict)
+async def reject_ride(
+    ride_id: UUID,
+    current_user: User = Depends(get_current_driver),
+    db: Session = Depends(get_db),
+):
+    """Driver declines a ride request — hidden for this driver, still available to others."""
+    ride = db.query(Ride).filter(Ride.id == ride_id).first()
+    if not ride:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ride not found")
+
+    if ride.status != RideStatus.REQUESTED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ride is not available")
+
+    driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+    if not driver or not driver.is_approved or not driver.is_online:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Driver not eligible")
+
+    record_driver_rejection(driver.id, ride.id)
+    return {"message": "Ride rejected", "ride_id": str(ride_id)}
 
 
 @router.post("/{ride_id}/verify-pickup", response_model=RideResponse)

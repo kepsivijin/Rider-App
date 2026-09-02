@@ -1,18 +1,18 @@
 """
-Service area: Ezhudesam & surroundings (Puvar, Kolachel, Vilavankodu)
+Service area: Kolachel ↔ Poovar coast + Marthandam ↔ Chirayankeezhu & surroundings
 """
 
-SERVICE_AREA_NAME = "Ezhudesam"
+SERVICE_AREA_NAME = "Kanyakumari South Coast"
 
 DEFAULT_SERVICE_BOUNDARY = [
-    [76.96, 8.31],
-    [77.18, 8.31],
-    [77.18, 8.42],
-    [76.96, 8.42],
-    [76.96, 8.31],
+    [76.948, 8.238],
+    [77.265, 8.238],
+    [77.265, 8.425],
+    [76.948, 8.425],
+    [76.948, 8.238],
 ]
 
-MIN_LATITUDE = 8.31
-MAX_LATITUDE = 8.42
-MIN_LONGITUDE = 76.96
-MAX_LONGITUDE = 77.18
+MIN_LATITUDE = 8.238
+MAX_LATITUDE = 8.425
+MIN_LONGITUDE = 76.948
+MAX_LONGITUDE = 77.265

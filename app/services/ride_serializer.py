@@ -71,7 +71,10 @@ def serialize_ride(ride: Ride, db: Session, viewer: Optional[User] = None) -> Ri
     data["pickup_verified"] = bool(getattr(ride, "pickup_verified", False))
     data["notification_message"] = notification_message if is_customer else None
 
-    live = redis_client.get(f"ride_location:{ride.id}")
+    try:
+        live = redis_client.get(f"ride_location:{ride.id}")
+    except Exception:
+        live = None
     if live:
         try:
             loc = json.loads(live)

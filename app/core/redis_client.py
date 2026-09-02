@@ -5,7 +5,11 @@ from app.core.config import settings
 def create_redis_client() -> redis.Redis:
     """Create Redis client with TLS support for Upstash (rediss://)."""
     url = settings.REDIS_URL.strip()
-    kwargs = {"decode_responses": False}
+    kwargs = {
+        "decode_responses": False,
+        "socket_connect_timeout": 2,
+        "socket_timeout": 2,
+    }
 
     if url.startswith("rediss://"):
         kwargs["ssl_cert_reqs"] = None
